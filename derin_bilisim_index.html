@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Derin Bilişim — Bilgisayar Teknik Servis</title>
+  <style>
+    :root{--blue:#0b72d6;--bg:#f4f8fc;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#222}
+    header{background:var(--blue);color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+    .btn{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
+    .btn-login{background:#fff;color:var(--blue);font-weight:700}
+    main{padding:20px}
+    .card{background:#fff;border-radius:10px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:18px}
+    form input, form textarea{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
+    .map{width:100%;height:300px;border-radius:8px;overflow:hidden}
+    #adminPanel{display:none}
+    .notice{color:green}
+    .settings-section{margin-top:16px;padding:10px;border-top:1px solid #ddd}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:10}
+    .modal-content{background:#fff;padding:20px;border-radius:8px;width:90%;max-width:400px;box-shadow:0 3px 10px rgba(0,0,0,0.2)}
+    @media(max-width:720px){header{flex-direction:column;gap:8px;align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>Derin Bilişim</strong>
+      <div style="font-size:12px;color:rgba(255,255,255,0.9)">Bilgisayar Teknik Servis — İskenderun</div>
+    </div>
+    <div>
+      <button class="btn btn-login" id="openLogin">Giriş Yap</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Hakkımızda</h2>
+      <p>Derin Bilişim, İskenderun merkezli bilgisayar tamir, bakım, veri kurtarma ve siber güvenlik hizmetleri sunar. Deneyimli teknik ekibimizle hızlı ve güvenilir destek sağlıyoruz.</p>
+      <p><strong>Adres:</strong> Prof.Dr.Aziz Sancar Cad. No:1 Kat:4 D:71, İskenderun</p>
+      <p><strong>Telefon:</strong> <a href="tel:+905362508685">0536 250 8685</a></p>
+      <p><strong>E-posta:</strong> <a href="mailto:mahmutbilir@gmail.com">mahmutbilir@gmail.com</a></p>
+    </section>
+
+    <section class="card">
+      <h3>Hizmetlerimiz</h3>
+      <ul>
+        <li>Bilgisayar & Laptop Tamiri</li>
+        <li>Donanım Değişimi / Yükseltme</li>
+        <li>Veri Kurtarma</li>
+        <li>Yazılım Kurulumu & Optimizasyon</li>
+        <li>Siber Güvenlik & Yedekleme</li>
+      </ul>
+    </section>
+
+    <section class="card" id="randevuCard">
+      <h3>Randevu Al</h3>
+      <form id="randevuForm">
+        <input type="text" id="isim" placeholder="Ad Soyad" required>
+        <input type="email" id="email" placeholder="E-posta" required>
+        <input type="text" id="telefon" placeholder="Telefon (opsiyonel)">
+        <textarea id="not" placeholder="Sorununuzu / isteğinizi yazınız" rows="4"></textarea>
+        <button type="submit" class="btn" style="background:var(--blue);color:#fff;width:100%;margin-top:8px">Randevu Oluştur</button>
+      </form>
+      <div id="randevuMessage" role="status" aria-live="polite" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card">
+      <h3>Konumumuz</h3>
+      <div class="map">
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3191.849799940136!2d36.60218437695906!3d36.58386157997539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x15260c2b5e0b7baf%3A0x8a8b42d3f1c0e7f2!2sProf.Dr.Aziz%20Sancar%20Cd.%2C%20Iskenderun!5e0!3m2!1str!2str!4v1698123456789!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <section class="card" id="adminPanel">
+      <h3>Yönetici Paneli</h3>
+      <p>Hoş geldiniz, Mahmut Bilir.</p>
+      <div>
+        <button id="exportCsv" class="btn" style="background:#eee;">Randevuları CSV olarak indir</button>
+        <button id="clearRandevular" class="btn" style="background:#eee;">Tümünü Sil</button>
+      </div>
+      <ul id="randevuList" style="margin-top:12px"></ul>
+
+      <div class="settings-section">
+        <h4>Site Ayarları</h4>
+        <form id="siteSettingsForm">
+          <input type="text" id="siteTitle" placeholder="Site Başlığı">
+          <input type="email" id="notifyMail" placeholder="Bildirim E-postası">
+          <button type="submit" class="btn" style="background:var(--blue);color:#fff;width:100%;margin-top:8px">Kaydet</button>
+        </form>
+        <div id="settingsMessage" style="margin-top:8px;color:green"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="adminModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <h3>Yönetici Girişi</h3>
+      <input type="text" id="adminUser" placeholder="Kullanıcı Adı" aria-label="Kullanıcı Adı">
+      <input type="password" id="adminPass" placeholder="Şifre" aria-label="Şifre">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="loginBtn" class="btn" style="background:var(--blue);color:#fff;flex:1">Giriş Yap</button>
+        <button id="cancelLogin" class="btn" style="background:#eee;flex:1">İptal</button>
+      </div>
+      <div id="loginError" style="color:#b91c1c;margin-top:8px;display:none"></div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_USER = 'DerinBilişim';
+    const ADMIN_PASS = 'Mahmut99201012';
+    let NOTIFY_EMAIL = localStorage.getItem('notifyMail') || 'mahmutbilir@gmail.com';
+
+    function qs(id){return document.getElementById(id)}
+
+    const adminModal = qs('adminModal');
+    const openLogin = qs('openLogin');
+    const loginBtn = qs('loginBtn');
+    const cancelLogin = qs('cancelLogin');
+    const loginError = qs('loginError');
+
+    openLogin.addEventListener('click', ()=>{
+      adminModal.style.display='flex';
+      adminModal.setAttribute('aria-hidden','false');
+      qs('adminUser').focus();
+    });
+
+    cancelLogin.addEventListener('click', closeModal);
+    window.addEventListener('click', (e)=>{ if(e.target===adminModal) closeModal(); });
+
+    function closeModal(){ adminModal.style.display='none'; adminModal.setAttribute('aria-hidden','true'); loginError.style.display='none'; }
+
+    loginBtn.addEventListener('click', ()=>{
+      const user = qs('adminUser').value.trim();
+      const pass = qs('adminPass').value.trim();
+      if(user===ADMIN_USER && pass===ADMIN_PASS){
+        closeModal();
+        showAdminPanel();
+      } else {
+        loginError.textContent='Kullanıcı adı veya şifre hatalı.';
+        loginError.style.display='block';
+      }
+    });
+
+    function showAdminPanel(){
+      qs('adminPanel').style.display='block';
+      loadRandevular();
+      loadSettings();
+    }
+
+    function sanitize(s){return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').trim();}
+
+    const randevuForm = qs('randevuForm');
+    const randevuMessage = qs('randevuMessage');
+
+    async function sendMailBackend(data){
+      try {
+        const res = await fetch('http://localhost:3000/api/sendMail', { // Node.js backend URL
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(data)
+        });
+        return res.ok;
+      } catch(err){
+        console.error(err);
+        return false;
+      }
+    }
+
+    randevuForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const isim = sanitize(qs('isim').value);
+      const email = sanitize(qs('email').value);
+      const telefon = sanitize(qs('telefon').value);
+      const not = sanitize(qs('not').value);
+
+      if(!isim || !email){ randevuMessage.textContent='Lütfen isim ve e-posta girin.'; return; }
+
+      const kayit = {id:Date.now(), isim, email, telefon, not, tarih:(new Date()).toISOString()};
+      const list = JSON.parse(localStorage.getItem('randevular')||'[]');
+      list.push(kayit);
+      localStorage.setItem('randevular', JSON.stringify(list));
+
+      const mailData = {to: NOTIFY_EMAIL, subject: 'Yeni Randevu - Derin Bilişim', message: `Ad Soyad: ${isim}\nE-posta: ${email}\nTelefon: ${telefon}\nNot: ${not}`};
+      const success = await sendMailBackend(mailData);
+
+      randevuMessage.textContent = success ? 'Randevunuz alındı ve e-posta gönderildi!' : 'Randevunuz kaydedildi, ancak e-posta gönderimi başarısız oldu.';
+      randevuMessage.className='notice';
+      randevuForm.reset();
+      if(qs('adminPanel').style.display==='block') loadRandevular();
+    });
+
+    function loadRandevular(){
+      const list = JSON.parse(localStorage.getItem('randevular')||'[]');
+      const ul = qs('randevuList');
+      if(list.length===0){ ul.innerHTML='<li>Henüz randevu yok.</li>'; return; }
+      ul.innerHTML = list.slice().reverse().map(r=>`<li style="margin-bottom:8px"><strong>${r.isim}</strong> — ${new Date(r.tarih).toLocaleString('tr-TR')}<br><small style="color:${getComputedStyle(document.documentElement).getPropertyValue('--muted')}">${r.email} | ${r.telefon}<br>${r.not}</small></li>`).join('');
+    }
+
+    function loadSettings(){
+      qs('siteTitle').value = localStorage.getItem('siteTitle') || document.title;
+      qs('notifyMail').value = NOTIFY_EMAIL;
+    }
+
+    qs('siteSettingsForm').addEventListener('submit',(e)=>{
+      e.preventDefault();
+      const title = sanitize(qs('siteTitle').value);
+      const mail = sanitize(qs('notifyMail').value);
+      if(title){ document.title=title; localStorage.setItem('siteTitle',title); }
+      if(mail){ NOTIFY_EMAIL=mail; localStorage.setItem('notifyMail',mail); }
+      qs('settingsMessage').textContent='Ayarlar kaydedildi.';
+    });
+  </script>
+</body>
+</html>

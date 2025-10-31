@@ -69,13 +69,13 @@
     <section class="card">
       <h3>Konumumuz</h3>
       <div class="map">
-        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3191.849799940136!2d36.60218437695906!3d36.58386157997539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x15260c2b5e0b7baf%3A0x8a8b42d3f1c0e7f2!2sProf.Dr.Aziz%20Sancar%20Cd.%2C%20Iskenderun!5e0!3m2!1str!2str!4v1698123456789!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen loading="lazy"></iframe>
+        <iframe src="https://www.google.com/maps?q=Prof.Dr.Aziz%20Sancar%20Cad.%20No:1%20Iskenderun&output=embed" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
       </div>
     </section>
 
     <section class="card" id="adminPanel">
       <h3>Yönetici Paneli</h3>
-      <p>Hoş geldiniz, Mahmut Bilir.</p>
+      <p>Hoş geldiniz.</p>
       <div>
         <button id="exportCsv" class="btn" style="background:#eee;">Randevuları CSV olarak indir</button>
         <button id="clearRandevular" class="btn" style="background:#eee;">Tümünü Sil</button>
@@ -87,6 +87,7 @@
         <form id="siteSettingsForm">
           <input type="text" id="siteTitle" placeholder="Site Başlığı">
           <input type="email" id="notifyMail" placeholder="Bildirim E-postası">
+          <input type="text" id="backendUrl" placeholder="Backend URL (opsiyonel, örn https://api.ornek.com)">
           <button type="submit" class="btn" style="background:var(--blue);color:#fff;width:100%;margin-top:8px">Kaydet</button>
         </form>
         <div id="settingsMessage" style="margin-top:8px;color:green"></div>
@@ -108,8 +109,9 @@
   </div>
 
   <script>
-    const ADMIN_USER = 'DerinBilişim';
-    const ADMIN_PASS = 'Mahmut99201012';
+    // SECURITY: Removed plaintext credentials from client-side code.
+    // Admin authentication and email sending should be performed server-side.
+
     let NOTIFY_EMAIL = localStorage.getItem('notifyMail') || 'mahmutbilir@gmail.com';
 
     function qs(id){return document.getElementById(id)}
@@ -131,16 +133,36 @@
 
     function closeModal(){ adminModal.style.display='none'; adminModal.setAttribute('aria-hidden','true'); loginError.style.display='none'; }
 
-    loginBtn.addEventListener('click', ()=>{
+    async function attemptLogin(user, pass){
+      // If a backend URL is configured, attempt server-side auth.
+      const backend = localStorage.getItem('backendUrl') || '';
+      if(!backend){
+        // No backend configured: do not perform authentication client-side.
+        return {ok:false, message:'Yönetici girişi için sunucu (backend) URLsi yapılandırılmamış. Lütfen site ayarlarından Backend URL girin.'};
+      }
+      try{
+        const res = await fetch(backend.replace(/\/$/, '') + '/api/login', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user, pass})
+        });
+        if(!res.ok) return {ok:false, message:'Giriş başarısız.'};
+        const data = await res.json();
+        // Expect backend to return {ok:true, token: '...'} on success
+        if(data && data.token){ localStorage.setItem('adminToken', data.token); return {ok:true}; }
+        return {ok:false, message:'Beklenmeyen sunucu cevabı.'};
+      }catch(err){
+        console.error(err);
+        return {ok:false, message:'Sunucuya bağlanılamadı.'};
+      }
+    }
+
+    loginBtn.addEventListener('click', async ()=>{
       const user = qs('adminUser').value.trim();
       const pass = qs('adminPass').value.trim();
-      if(user===ADMIN_USER && pass===ADMIN_PASS){
-        closeModal();
-        showAdminPanel();
-      } else {
-        loginError.textContent='Kullanıcı adı veya şifre hatalı.';
-        loginError.style.display='block';
-      }
+      if(!user || !pass){ loginError.textContent='Lütfen kullanıcı adı ve şifre girin.'; loginError.style.display='block'; return; }
+
+      const result = await attemptLogin(user, pass);
+      if(result.ok){ closeModal(); showAdminPanel(); }
+      else { loginError.textContent = result.message || 'Kullanıcı adı veya şifre hatalı.'; loginError.style.display='block'; }
     });
 
     function showAdminPanel(){
@@ -155,8 +177,13 @@
     const randevuMessage = qs('randevuMessage');
 
     async function sendMailBackend(data){
+      const backend = localStorage.getItem('backendUrl') || '';
+      if(!backend){
+        // No backend configured. Return false to indicate mail not sent.
+        return false;
+      }
       try {
-        const res = await fetch('http://localhost:3000/api/sendMail', { // Node.js backend URL
+        const res = await fetch(backend.replace(/\/$/, '') + '/api/sendMail', { // backend URL should be set in settings
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify(data)
@@ -185,7 +212,7 @@
       const mailData = {to: NOTIFY_EMAIL, subject: 'Yeni Randevu - Derin Bilişim', message: `Ad Soyad: ${isim}\nE-posta: ${email}\nTelefon: ${telefon}\nNot: ${not}`};
       const success = await sendMailBackend(mailData);
 
-      randevuMessage.textContent = success ? 'Randevunuz alındı ve e-posta gönderildi!' : 'Randevunuz kaydedildi, ancak e-posta gönderimi başarısız oldu.';
+      randevuMessage.textContent = success ? 'Randevunuz alındı ve e-posta gönderildi!' : 'Randevunuz kaydedildi, ancak e-posta gönderimi yapılandırılmış veya başarısız oldu.';
       randevuMessage.className='notice';
       randevuForm.reset();
       if(qs('adminPanel').style.display==='block') loadRandevular();
@@ -195,22 +222,62 @@
       const list = JSON.parse(localStorage.getItem('randevular')||'[]');
       const ul = qs('randevuList');
       if(list.length===0){ ul.innerHTML='<li>Henüz randevu yok.</li>'; return; }
-      ul.innerHTML = list.slice().reverse().map(r=>`<li style="margin-bottom:8px"><strong>${r.isim}</strong> — ${new Date(r.tarih).toLocaleString('tr-TR')}<br><small style="color:${getComputedStyle(document.documentElement).getPropertyValue('--muted')}">${r.email} | ${r.telefon}<br>${r.not}</small></li>`).join('');
+      ul.innerHTML = '';
+      list.slice().reverse().forEach(r=>{
+        const li = document.createElement('li');
+        li.style.marginBottom = '8px';
+        li.innerHTML = `<strong>${sanitize(r.isim)}</strong> — ${new Date(r.tarih).toLocaleString('tr-TR')}<br><small style="color:var(--muted)">${sanitize(r.email)} — ${sanitize(r.telefon)}</small><div style="margin-top:6px">${sanitize(r.not)}</div><div style="margin-top:6px"><button class="btn small" data-id="${r.id}" style="background:#eee">Sil</button></div>`;
+        ul.appendChild(li);
+      });
+      ul.querySelectorAll('button[data-id]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = Number(btn.getAttribute('data-id'));
+          const newList = (JSON.parse(localStorage.getItem('randevular')||'[]')).filter(x=>x.id!==id);
+          localStorage.setItem('randevular', JSON.stringify(newList));
+          loadRandevular();
+        });
+      });
+    }
+
+    function exportCsv(){
+      const list = JSON.parse(localStorage.getItem('randevular')||'[]');
+      if(list.length===0){ alert('Yeni randevu yok.'); return; }
+      const rows = [['id','isim','email','telefon','not','tarih']];
+      list.forEach(r=> rows.push([r.id, r.isim, r.email, r.telefon, (r.not||'').replace(/\n/g,' '), r.tarih]));
+      const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'randevular.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function clearRandevular(){
+      if(!confirm('Tüm randevuları silmek istediğinize emin misiniz?')) return;
+      localStorage.removeItem('randevular');
+      loadRandevular();
     }
 
     function loadSettings(){
       qs('siteTitle').value = localStorage.getItem('siteTitle') || document.title;
-      qs('notifyMail').value = NOTIFY_EMAIL;
+      qs('notifyMail').value = localStorage.getItem('notifyMail') || NOTIFY_EMAIL;
+      qs('backendUrl').value = localStorage.getItem('backendUrl') || '';
     }
 
     qs('siteSettingsForm').addEventListener('submit',(e)=>{
       e.preventDefault();
       const title = sanitize(qs('siteTitle').value);
       const mail = sanitize(qs('notifyMail').value);
+      const backend = (qs('backendUrl').value||'').trim();
       if(title){ document.title=title; localStorage.setItem('siteTitle',title); }
       if(mail){ NOTIFY_EMAIL=mail; localStorage.setItem('notifyMail',mail); }
+      if(backend){ localStorage.setItem('backendUrl',backend); }
       qs('settingsMessage').textContent='Ayarlar kaydedildi.';
     });
+
+    qs('exportCsv').addEventListener('click', exportCsv);
+    qs('clearRandevular').addEventListener('click', clearRandevular);
+
+    // If adminToken exists, auto-show panel (token-based auth expected from server)
+    if(localStorage.getItem('adminToken')){ showAdminPanel(); }
   </script>
 </body>
 </html>
